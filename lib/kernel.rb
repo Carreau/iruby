@@ -31,8 +31,8 @@ class DisplayHook
     end
 
     __builtin__._ = obj
-    STDERR.puts "displayhook call:"
-    STDERR.puts @parent_header.inspect
+    #STDERR.puts "displayhook call:"
+    #STDERR.puts @parent_header.inspect
     msg = @session.msg('pyout', {data:repr(obj)}, @parent_header)
     #@pub_socket.send(msg.to_json)
     @session.send(@pub_socket, msg)
@@ -112,8 +112,11 @@ class RKernel
   end
 
   def execute_request(ident, parent)
+    #$stderr.puts "parent : #{parent}"
+    #$stderr.puts "ident : #{ident}"
     begin
-      code = parent['content']['code']
+      buffer = JSON.parse(parent['buffers'][0]);
+      code = buffer["code"]
     rescue
       STDERR.puts "Got bad msg: "
       STDERR.puts parent
@@ -122,14 +125,15 @@ class RKernel
     pyin_msg = @session.msg('pyin',{code: code}, parent)
     @session.send(@pub_socket, pyin_msg)
     begin
-      STDERR.puts 'parent: '
-      STDERR.puts parent.inspect
+      #STDERR.puts 'parent: '
+      #STDERR.puts parent.inspect
       comp_code = code#compiler(code, '<zmq-kernel>')
       $displayhook.set_parent(parent)
-      $stdout.set_parent(parent)
+      #$stdout.set_parent(parent)
+      #$stderr.puts "compcode #{comp_code}"
 
       output = eval(comp_code, @user_ns)
-      $stdout.puts(output.inspect) if output
+      #$stderr.puts(output.inspect) if output
     rescue Exception => e
       #$stderr.puts e.inspect
       result = 'error'
@@ -148,9 +152,14 @@ class RKernel
 
       reply_content = exc_content
     end
-    reply_content = {status: 'ok'}
-    reply_msg = @session.msg('execute_reply', reply_content, parent)
-    #$stdout.puts reply_msg
+    dt = {}
+    dt['text/plain'] = 'foo'
+    reply_content = {
+                    execution_count: 1,
+                    data:dt
+                    }
+    reply_msg = @session.msg('pyout', reply_content, parent)
+    #$stderr.puts 'reply message'
     #$stderr.puts reply_msg
     #@session.send(@reply_socket, ident + reply_msg)
     @session.send(@reply_socket, reply_msg, nil, nil, ident)
@@ -163,7 +172,7 @@ class RKernel
     matches = { matches: complete(parent), status: 'ok' }
     completion_msg = @session.send(@reply_socket, 'complete_reply',
                                        matches, parent, ident)
-    $stdout.puts completion_msg
+    #$stdout.puts completion_msg
   end
 
   def complete(msg)
@@ -180,14 +189,17 @@ class RKernel
       begin
         msg = JSON.parse(msg) if msg
         omsg = msg
+        #$stderr.puts "message --> #{msg}"
+        #$stderr.puts "buffer --> #{buffer}"
         handler = @handlers[omsg['header']['msg_type']]
       rescue
       end
       if handler.nil?
         STDERR.puts "UNKNOWN MESSAGE TYPE: #{omsg}"
       else
-        STDERR.puts 'handling ' + omsg.inspect
-        displayhook.__call__(send(handler, ident, omsg))
+        #STDERR.puts 'handling ' + omsg.inspect
+        #STDERR.puts "with #{handler}"
+        displayhook.__call__(send(handler, ident, msg))
       end
     end
   end
@@ -218,8 +230,8 @@ def main(configfile_path)
   pub_conn = connection % pub_port
   hb_conn = connection % hb_port
 
-  $stdout.puts "Starting the kernel..."
-  $stdout.puts "On:",shell_conn, pub_conn, hb_conn
+  #$stdout.puts "Starting the kernel..."
+  #$stdout.puts "On:",shell_conn, pub_conn, hb_conn
 
   session = Session.new('kernel')
 

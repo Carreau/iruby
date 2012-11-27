@@ -5,6 +5,7 @@
 require 'zmq'
 require 'uuid'
 require 'json'
+require 'digest/md5'
 
 class Message
   # A simple message object that maps dict keys to attributes.
@@ -35,8 +36,8 @@ class Message
   end
 
   def self.extract_header(msg_or_header)
-    STDERR.puts "extracting header for:"
-    STDERR.puts msg_or_header.inspect
+    #STDERR.puts "extracting header for:"
+    #STDERR.puts msg_or_header.inspect
     # Given a message or header, return the header.
     if msg_or_header.nil?
       return {}
@@ -47,8 +48,8 @@ class Message
     #h ||= msg_or_header['msg_id']
     h ||= msg_or_header
 
-    STDERR.puts "extracted:"
-    STDERR.puts h.inspect
+    #STDERR.puts "extracted parent header:"
+    #STDERR.puts h.inspect
     return h
   end
 end
@@ -76,14 +77,15 @@ class Session
     msg_list : list
         The [p_header,p_parent,p_content] part of the message list.
     """
-    if @auth.nil?
-      return ''
-    end
-    #h = self.auth.copy()
+    #if @auth.nil?
+    #  return ''
+    #end
+    #h = @auth.copy()
     #msg_list.each do |m|
-      #h.update(m)
+    #  h.update(m)
     #end
     #return str_to_bytes(h.hexdigest())
+    return Digest::MD5.hexdigest(msg_list[0])
   end
 
   def msg_header
@@ -156,9 +158,13 @@ class Session
     end
 
     msg = msg_or_type
+    #$stderr.puts 'msg or type'
+    #$stderr.puts msg
 
     buffers ||= []
     to_send = self.serialize(msg, ident)
+    #$stderr.puts 'to send :'
+    #$stderr.puts to_send
     flag = 0
     if buffers.any?
       flag = ZMQ::SNDMORE
@@ -254,6 +260,8 @@ class Session
         the packed or serialized versions, so if JSON is used, these
         are utf8 encoded JSON strings.
     """
+    #$stderr.puts 'pre-serialize'
+    #$stderr.puts msg
     content = msg.fetch('content', {})
     if content.nil?
       content = {}.to_json
@@ -271,6 +279,7 @@ class Session
 
     real_message = [self.pack(msg['header']),
                     self.pack(msg['parent_header']),
+                    '{}', #metadata
                     content]
 
     to_send = []
@@ -285,8 +294,12 @@ class Session
 
     signature = self.sign(real_message)
     to_send << signature
+    #1 signature
 
     to_send += real_message
+
+    #$stderr.puts 'post-serialize'
+    #$stderr.puts to_send
 
     return to_send
   end
@@ -326,7 +339,7 @@ class Session
     unless msg_list.length >= minlen
       raise Exception "malformed message, must have at least %i elements"%minlen
     end
-    STDERR.puts msg_list.inspect
+    #STDERR.puts msg_list.inspect
     header = msg_list[1]
     message['header'] = JSON.parse(header)
     message['msg_id'] = header['msg_id']
