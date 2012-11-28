@@ -5,6 +5,7 @@
 require 'zmq'
 require 'uuid'
 require 'json'
+require 'date'
 require 'digest/md5'
 
 class Message
@@ -31,7 +32,9 @@ class Message
     return {
       msg_id: msg_id,
       username: username,
-      session: session
+      version: [0, 14, 0, 'dev'],
+      session: session,
+      date:DateTime.now.strftime('%FT%T.123456')
     }
   end
 
@@ -60,7 +63,7 @@ class Session
   def initialize username='jadams'
     @username = username
     @session = UUID.new.generate
-    @msg_id = 0
+    @msg_id = UUID.new.generate
 
     @auth = nil
   end
@@ -90,7 +93,7 @@ class Session
 
   def msg_header
     h = Message.msg_header(@msg_id, @username, @session)
-    @msg_id += 1
+    @msg_id = UUID.new.generate
     return h
   end
 
@@ -163,8 +166,8 @@ class Session
 
     buffers ||= []
     to_send = self.serialize(msg, ident)
-    #$stderr.puts 'to send :'
-    #$stderr.puts to_send
+    $stderr.puts 'to send :'
+    $stderr.puts to_send
     flag = 0
     if buffers.any?
       flag = ZMQ::SNDMORE

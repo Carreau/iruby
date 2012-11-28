@@ -156,7 +156,8 @@ class RKernel
     dt['text/plain'] = 'foo'
     reply_content = {
                     execution_count: 1,
-                    data:dt
+                    data:dt,
+                    foo:'bar'
                     }
     reply_msg = @session.msg('pyout', reply_content, parent)
     #$stderr.puts 'reply message'
