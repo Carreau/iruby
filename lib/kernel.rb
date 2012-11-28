@@ -31,10 +31,7 @@ class DisplayHook
     end
 
     __builtin__._ = obj
-    #STDERR.puts "displayhook call:"
-    #STDERR.puts @parent_header.inspect
     msg = @session.msg('pyout', {data:repr(obj)}, @parent_header)
-    #@pub_socket.send(msg.to_json)
     @session.send(@pub_socket, msg)
   end
 
@@ -78,6 +75,7 @@ class RKernel
     @hb_socket = hb_socket
     @user_ns = OpenStruct.new.send(:binding)
     @history = []
+    @promptnumber=0
     #@compiler = CommandCompiler.new()
     #@completer = KernelCompleter(@user_ns)
 
@@ -125,22 +123,24 @@ class RKernel
     pyin_msg = @session.msg('pyin',{code: code}, parent)
     @session.send(@pub_socket, pyin_msg)
     begin
-      #STDERR.puts 'parent: '
-      #STDERR.puts parent.inspect
-      comp_code = code#compiler(code, '<zmq-kernel>')
       $displayhook.set_parent(parent)
-      #$stdout.set_parent(parent)
-      #$stderr.puts "compcode #{comp_code}"
 
-      output = eval(comp_code, @user_ns)
-      #$stderr.puts(output.inspect) if output
+      output = eval(code, @user_ns)
+      @promptnumber+=1
+      if output != nil
+        dt = {}
+        dt['text/plain'] = output.to_s
+        reply_content = {
+          execution_count: @promptnumber,
+          data:dt,
+        }
+        reply_msg = @session.msg('pyout', reply_content, parent)
+        @session.send(@pub_socket, reply_msg, nil, nil, ident)
+      end
+            
     rescue Exception => e
-      #$stderr.puts e.inspect
       result = 'error'
-      #etype, evalue, tb = sys.exc_info()
       etype, evalue, tb = e.class.to_s, e.message, e.backtrace
-      #tb = traceback.format_exception(etype, evalue, tb)
-      #tb = "1, 2, 3"
       exc_content = {
           status: 'error',
           traceback: tb,
@@ -152,17 +152,12 @@ class RKernel
 
       reply_content = exc_content
     end
-    dt = {}
-    dt['text/plain'] = 'foo'
-    reply_content = {
-                    execution_count: 1,
-                    data:dt,
-                    foo:'bar'
-                    }
-    reply_msg = @session.msg('pyout', reply_content, parent)
-    #$stderr.puts 'reply message'
-    #$stderr.puts reply_msg
     #@session.send(@reply_socket, ident + reply_msg)
+    reply_content = {
+      execution_count: @promptnumber,
+      data:dt,
+    }
+    reply_msg = @session.msg('execute_reply', reply_content, parent)
     @session.send(@reply_socket, reply_msg, nil, nil, ident)
     if reply_msg['content']['status'] == 'error'
       abort_queue
@@ -173,7 +168,6 @@ class RKernel
     matches = { matches: complete(parent), status: 'ok' }
     completion_msg = @session.send(@reply_socket, 'complete_reply',
                                        matches, parent, ident)
-    #$stdout.puts completion_msg
   end
 
   def complete(msg)
@@ -200,7 +194,11 @@ class RKernel
       else
         #STDERR.puts 'handling ' + omsg.inspect
         #STDERR.puts "with #{handler}"
-        displayhook.__call__(send(handler, ident, msg))
+        begin
+            displayhook.__call__(send(handler, ident, msg))
+        rescue
+            nil
+        end
       end
     end
   end

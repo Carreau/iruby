@@ -39,8 +39,6 @@ class Message
   end
 
   def self.extract_header(msg_or_header)
-    #STDERR.puts "extracting header for:"
-    #STDERR.puts msg_or_header.inspect
     # Given a message or header, return the header.
     if msg_or_header.nil?
       return {}
@@ -51,8 +49,6 @@ class Message
     #h ||= msg_or_header['msg_id']
     h ||= msg_or_header
 
-    #STDERR.puts "extracted parent header:"
-    #STDERR.puts h.inspect
     return h
   end
 end
@@ -161,13 +157,9 @@ class Session
     end
 
     msg = msg_or_type
-    #$stderr.puts 'msg or type'
-    #$stderr.puts msg
 
     buffers ||= []
     to_send = self.serialize(msg, ident)
-    $stderr.puts 'to send :'
-    $stderr.puts to_send
     flag = 0
     if buffers.any?
       flag = ZMQ::SNDMORE
@@ -263,8 +255,6 @@ class Session
         the packed or serialized versions, so if JSON is used, these
         are utf8 encoded JSON strings.
     """
-    #$stderr.puts 'pre-serialize'
-    #$stderr.puts msg
     content = msg.fetch('content', {})
     if content.nil?
       content = {}.to_json
@@ -301,8 +291,6 @@ class Session
 
     to_send += real_message
 
-    #$stderr.puts 'post-serialize'
-    #$stderr.puts to_send
 
     return to_send
   end
@@ -342,7 +330,6 @@ class Session
     unless msg_list.length >= minlen
       raise Exception "malformed message, must have at least %i elements"%minlen
     end
-    #STDERR.puts msg_list.inspect
     header = msg_list[1]
     message['header'] = JSON.parse(header)
     message['msg_id'] = header['msg_id']
