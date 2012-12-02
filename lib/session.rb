@@ -61,7 +61,7 @@ class Session
     @username = username
     @session = UUID.new.generate
     @msg_id = UUID.new.generate
-    @hamckey = hmackey
+    @hmackey = hmackey
 
     @auth = nil
   end
@@ -86,8 +86,12 @@ class Session
     #  h.update(m)
     #end
     #return str_to_bytes(h.hexdigest())
-    return Digest::HMAC.hexdigest(msg_list[0], @hmackey, Digest::MD5)
-    #return Digest::MD5.hexdigest(msg_list[0])
+    msg = msg_list[0].to_s+msg_list[1].to_s+msg_list[2].to_s+msg_list[3].to_s+msg_list[4].to_s+msg_list[5].to_s
+    if msg == nil
+        msg =''
+    end
+
+    return Digest::HMAC.hexdigest(msg, @hmackey, Digest::MD5)
   end
 
   def msg_header

@@ -177,7 +177,6 @@ class RKernel
 
   def start(displayhook)
     while true
-      $stdout.puts 'loopstart'
       ident = @reply_socket.recv()
       #assert @reply_socket.rcvmore(), "Unexpected missing message part."
       #msg = @reply_socket.recv()
@@ -185,8 +184,6 @@ class RKernel
       begin
         msg = JSON.parse(msg) if msg
         omsg = msg
-        #$stderr.puts "message --> #{msg}"
-        #$stderr.puts "buffer --> #{buffer}"
         handler = @handlers[omsg['header']['msg_type']]
       rescue
       end
@@ -201,7 +198,6 @@ class RKernel
             nil
         end
       end
-      $stdout.puts 'loopend'
     end
   end
 end
