@@ -7,6 +7,7 @@ require 'uuid'
 require 'json'
 require 'date'
 require 'digest/md5'
+require 'digest/hmac'
 
 class Message
   # A simple message object that maps dict keys to attributes.
@@ -56,10 +57,11 @@ end
 class Session
   DELIM = "<IDS|MSG>"
 
-  def initialize username='jadams'
+  def initialize username='jadams', hmackey='foo'
     @username = username
     @session = UUID.new.generate
     @msg_id = UUID.new.generate
+    @hamckey = hmackey
 
     @auth = nil
   end
@@ -84,7 +86,8 @@ class Session
     #  h.update(m)
     #end
     #return str_to_bytes(h.hexdigest())
-    return Digest::MD5.hexdigest(msg_list[0])
+    return Digest::HMAC.hexdigest(msg_list[0], @hmackey, Digest::MD5)
+    #return Digest::MD5.hexdigest(msg_list[0])
   end
 
   def msg_header

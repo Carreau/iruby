@@ -177,6 +177,7 @@ class RKernel
 
   def start(displayhook)
     while true
+      $stdout.puts 'loopstart'
       ident = @reply_socket.recv()
       #assert @reply_socket.rcvmore(), "Unexpected missing message part."
       #msg = @reply_socket.recv()
@@ -200,6 +201,7 @@ class RKernel
             nil
         end
       end
+      $stdout.puts 'loopend'
     end
   end
 end
@@ -220,19 +222,17 @@ def main(configfile_path)
   c = ZMQ::Context.new
 
   shell_port = config['shell_port']
-  pub_port = config['iopub_port']
-  hb_port = config['hb_port']
+  pub_port   = config['iopub_port']
+  hb_port    = config['hb_port']
+  key        = config['key']
 
   ip = '127.0.0.1'
   connection = ('tcp://%s' % ip) + ':%i'
   shell_conn = connection % shell_port
-  pub_conn = connection % pub_port
-  hb_conn = connection % hb_port
+  pub_conn   = connection % pub_port
+  hb_conn    = connection % hb_port
 
-  #$stdout.puts "Starting the kernel..."
-  #$stdout.puts "On:",shell_conn, pub_conn, hb_conn
-
-  session = Session.new('kernel')
+  session = Session.new('kernel',key)
 
   reply_socket = c.socket(ZMQ::XREP)
   reply_socket.bind(shell_conn)
@@ -248,24 +248,18 @@ def main(configfile_path)
     end
   end
 
-  stdout = OutStream.new(session, pub_socket, 'stdout')
-  #stderr = OutStream.new(session, pub_socket, 'stderr')
-  old_stdout = STDOUT
-  $stdout = stdout
-  #$stderr = stderr
+  console_stdout = STDOUT
+  console_stderr = STDERR
+  $stdout = OutStream.new(session, pub_socket, 'stdout')
+  #$stderr = OutStream.new(session, pub_socket, 'stderr')
 
-  display_hook = DisplayHook.new(session, pub_socket)
-  $displayhook = display_hook
+   
+  $displayhook = DisplayHook.new(session, pub_socket)
 
   kernel = RKernel.new(session, reply_socket, pub_socket, hb_socket)
 
-  # For debugging convenience, put sleep and a string in the namespace, so we
-  # have them every time we start.
-  #kernel.user_ns['sleep'] = sleep
-  #kernel.user_ns['s'] = 'Test string'
-
-  old_stdout.puts "Use Ctrl-\\ (NOT Ctrl-C!) to terminate."
-  kernel.start(display_hook)
+  console_stdout.puts "Use Ctrl-\\ (NOT Ctrl-C!) to terminate."
+  kernel.start($displayhook)
 end
 
 
