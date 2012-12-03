@@ -124,6 +124,7 @@ class RKernel
     @session.send(@pub_socket, pyin_msg)
     begin
       $displayhook.set_parent(parent)
+      $stdout.set_parent(parent)
 
       output = eval(code, @user_ns)
       @promptnumber+=1
