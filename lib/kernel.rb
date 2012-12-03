@@ -128,9 +128,9 @@ class RKernel
 
       output = eval(code, @user_ns)
       @promptnumber+=1
-      if output != nil
+      unless output.nil?
         dt = {}
-        dt['text/plain'] = output.to_s
+        dt['text/plain'] = output.inspect
         reply_content = {
           execution_count: @promptnumber,
           data:dt,

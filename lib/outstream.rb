@@ -57,8 +57,15 @@ class OutStream
     if @pub_socket.nil?
       raise 'I/O operation on closed file'
     else
-      @_buffer << s
-      @_buffer_len += s.length
+      # no idea why it sometime crashes.
+      # so try/except
+      begin
+        @_buffer << s
+        @_buffer << "\n"
+        @_buffer_len += s.length
+      rescue
+        nil
+      end
       _maybe_send
     end
   end
